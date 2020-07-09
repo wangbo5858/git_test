@@ -1,0 +1,106 @@
+PROCEDURE
+
+
+
+
+
+view plain
+
+copy to clipboard
+
+print
+
+?
+01./*  
+02. ファイル出力  
+03.*/  
+04.CREATE OR REPLACE PROCEDURE TEST AS  
+05.  
+06.-------------------  
+07.-- データ格納変数  
+08.-------------------  
+09.W1     VARCHAR2(20);  
+10.W2     NUMBER(20,3);  
+11.W_OUT  VARCHAR2(50);  
+12.  
+13.--------------  
+14.-- TABLE定義  
+15.--------------  
+16.F1W    T_A.F1%TYPE;  
+17.F2W    NUMBER(20,3);  
+18.  
+19.---------------------  
+20.-- ファイル出力変数  
+21.---------------------  
+22.-- 出力パス  
+23.DNM    VARCHAR2(200) := 'C:\TEMP';  
+24.-- 出力ファイル名  
+25.FNM    VARCHAR2(200) := 'TEST.CSV';  
+26.-- ファイルハンドル  
+27.FNO    UTL_FILE.FILE_TYPE;  
+28.  
+29.-----------------  
+30.-- カーソル定義  
+31.-----------------  
+32.-- カーソル変数のオブジェクト定義  
+33.TYPE CU_TYPE IS REF CURSOR;  
+34.-- カーソル変数定義  
+35.CSR CU_TYPE;  
+36.  
+37.-------------  
+38.-- 処理開始  
+39.-------------  
+40.BEGIN  
+41.  
+42.    -- メッセージ出力  
+43.    DBMS_OUTPUT.ENABLE( 1000000 );  
+44.    DBMS_OUTPUT.PUT_LINE('--BEGIN--');  
+45.  
+46.    -- ファイルオープン  
+47.    FNO := UTL_FILE.FOPEN(DNM, FNM, 'W', 2000);  
+48.      
+49.    -- 書込み  
+50.    BEGIN  
+51.        -- カーソルオープン  
+52.        OPEN CSR FOR  
+53.            SELECT F1,F2 FROM T_A  
+54.            ;  
+55.          
+56.        -- データ取得  
+57.        LOOP  
+58.            FETCH CSR INTO  
+59.                 F1W  
+60.                ,F2W  
+61.                ;  
+62.  
+63.            -- 最終データ確認  
+64.            IF CSR%NOTFOUND THEN  
+65.                EXIT;  
+66.            END IF;  
+67.  
+68.            -- データ格納  
+69.            W1 := F1W;  
+70.            W2 := F2W;  
+71.  
+72.            -- 出力用データ  
+73.            W_OUT := W1 || ',' || W2;  
+74.            -- ファイル書き込み  
+75.            UTL_FILE.PUT_LINE(FNO, W_OUT);  
+76.  
+77.            -- メッセージ出力  
+78.            DBMS_OUTPUT.PUT_LINE(W_OUT);  
+79.  
+80.        END LOOP;  
+81.    EXCEPTION  
+82.        WHEN OTHERS THEN  
+83.            DBMS_OUTPUT.PUT_LINE('エラー' || SQLCODE);  
+84.    END;  
+85.  
+86.    -- ファイルクローズ  
+87.    UTL_FILE.FCLOSE(FNO);  
+88.  
+89.    -- メッセージ出力  
+90.    DBMS_OUTPUT.PUT_LINE('--END--');  
+91.END;  
+92./  
+93.SHOW ERR  

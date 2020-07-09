@@ -1,0 +1,193 @@
+/* 例外エラーによる対応 */
+WHENEVER OSERROR  EXIT FAILURE     ROLLBACK
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+
+/******************************************************************************/
+-- 品目号機マスタ取込 品目マスタ更新2
+-- 【引数】
+--   &1  : スキーマ名(PPS用のスキーマ)
+--   &2  : 会社コード
+--   &3  : 事業部コード
+--   &4  : 工場コード
+-- 【備考】
+-- 
+/******************************************************************************/
+
+DECLARE
+
+inCOMCD   VARCHAR2(25) := '&2';  -- 会社コード
+inDIVCD   VARCHAR2(25) := '&3';  -- 事業部コード
+inPLTCD   VARCHAR2(25) := '&4';  -- 工場コード
+
+cDEL	VARCHAR2(1) := '1';	-- 連携フラグ：削除
+cSID	VARCHAR2(25) := 'PFS_V305_03';	-- サブシステムID
+cUSER	VARCHAR2(25) := 'SYSTEM';	-- ユーザ
+
+/******************************************************************************/
+--  ログ出力
+-- 【引数】
+--   pinMessage  : メッセージ
+/******************************************************************************/
+PROCEDURE PrintLog(pinMessage VARCHAR2) IS
+BEGIN
+	DBMS_OUTPUT.PUT_LINE(TO_CHAR(SYSTIMESTAMP,'YYYY/MM/DD HH24:MI:SS.FF3') || ' : ' || pinMessage);
+END;
+
+
+/***************************/
+/* メイン処理              */
+/***************************/
+BEGIN
+
+	PrintLog(cSID || '品目号機マスタ取込 品目マスタ更新2 開始');
+	
+	UPDATE FMI_ITEM FI
+	SET FI.STD_PROCESS_PATTERN = 
+			(
+			SELECT MIN(LPP.PROCESS_PATTERN)
+			FROM FMR_LINE_PRODUCT_PROCESS LPP INNER JOIN
+				 (
+					SELECT 
+						 LPP1.COMPANY_CODE            COMPANY_CODE
+						,LPP1.DIVISION_CODE           DIVISION_CODE
+						,LPP1.ITEM_CODE               ITEM_CODE
+						,MIN(LPP1.LINE_RESOURCE_CODE) LINE_RESOURCE_CODE
+					FROM FMR_LINE_PRODUCT_PROCESS LPP1 INNER JOIN
+						 (
+							SELECT
+								 COMPANY_CODE
+								,DIVISION_CODE
+								,ITEM_CODE
+								,MIN(PRIORITY) PRIORITY
+							FROM FMR_LINE_PRODUCT_PROCESS
+							GROUP BY COMPANY_CODE, DIVISION_CODE, ITEM_CODE
+						 ) LPP2
+						ON      LPP1.COMPANY_CODE  = inCOMCD
+						 	AND LPP1.DIVISION_CODE = inDIVCD
+						 	AND LPP1.ITEM_CODE     = FI.ITEM_CODE
+						 	AND LPP2.COMPANY_CODE  = inCOMCD
+							AND LPP2.DIVISION_CODE = inDIVCD
+							AND LPP2.ITEM_CODE     = FI.ITEM_CODE
+							AND LPP1.PRIORITY      = LPP2.PRIORITY
+					GROUP BY LPP1.COMPANY_CODE, LPP1.DIVISION_CODE, LPP1.ITEM_CODE
+				 ) LPP3
+				ON      LPP.COMPANY_CODE       = inCOMCD
+				 	AND LPP.DIVISION_CODE      = inDIVCD
+				 	AND LPP.ITEM_CODE          = FI.ITEM_CODE
+					AND LPP.LINE_RESOURCE_CODE = LPP3.LINE_RESOURCE_CODE
+			)
+	;
+	
+	UPDATE FMI_ITEM FI
+	SET FI.STD_BOM_PATTERN = 
+			(
+			SELECT MIN(FB.BOM_PATTERN)
+			FROM (
+					SELECT MIN(LPP4.PROCESS_PATTERN) PROCESS_PATTERN
+					FROM FMR_LINE_PRODUCT_PROCESS LPP4 INNER JOIN
+					 (
+						SELECT 
+							 LPP1.COMPANY_CODE            COMPANY_CODE
+							,LPP1.DIVISION_CODE           DIVISION_CODE
+							,LPP1.ITEM_CODE               ITEM_CODE
+							,MIN(LPP1.LINE_RESOURCE_CODE) LINE_RESOURCE_CODE
+						FROM FMR_LINE_PRODUCT_PROCESS LPP1 INNER JOIN
+							 (
+								SELECT
+									 COMPANY_CODE
+									,DIVISION_CODE
+									,ITEM_CODE
+									,MIN(PRIORITY) PRIORITY
+								FROM FMR_LINE_PRODUCT_PROCESS
+								GROUP BY COMPANY_CODE, DIVISION_CODE, ITEM_CODE
+							 ) LPP2
+							ON      LPP1.COMPANY_CODE  = inCOMCD
+							 	AND LPP1.DIVISION_CODE = inDIVCD
+							 	AND LPP1.ITEM_CODE     = FI.ITEM_CODE
+							 	AND LPP2.COMPANY_CODE  = inCOMCD
+								AND LPP2.DIVISION_CODE = inDIVCD
+								AND LPP2.ITEM_CODE     = FI.ITEM_CODE
+								AND LPP1.PRIORITY      = LPP2.PRIORITY
+						GROUP BY LPP1.COMPANY_CODE, LPP1.DIVISION_CODE, LPP1.ITEM_CODE
+					 ) LPP3
+					ON      LPP4.COMPANY_CODE       = inCOMCD
+					 	AND LPP4.DIVISION_CODE      = inDIVCD
+					 	AND LPP4.ITEM_CODE          = FI.ITEM_CODE
+						AND LPP4.LINE_RESOURCE_CODE = LPP3.LINE_RESOURCE_CODE
+				) LPP
+				INNER JOIN FMI_BOM FB
+				ON      FB.COMPANY_CODE    = inCOMCD
+					AND FB.DIVISION_CODE   = inDIVCD
+					AND FB.ITEM_CODE       = FI.ITEM_CODE
+					AND FB.PROCESS_PATTERN = LPP.PROCESS_PATTERN
+			)
+	;
+
+	UPDATE FMI_ITEM FI
+	SET FI.STD_BOM_PATTERN = 
+			(
+			SELECT MIN(FB.BOM_PATTERN)
+			FROM (
+					SELECT MIN(LPP4.PROCESS_PATTERN) PROCESS_PATTERN
+					FROM FMR_LINE_PRODUCT_PROCESS LPP4 INNER JOIN
+					 (
+						SELECT 
+							 LPP1.COMPANY_CODE            COMPANY_CODE
+							,LPP1.DIVISION_CODE           DIVISION_CODE
+							,LPP1.ITEM_CODE               ITEM_CODE
+							,MIN(LPP1.LINE_RESOURCE_CODE) LINE_RESOURCE_CODE
+						FROM FMR_LINE_PRODUCT_PROCESS LPP1 INNER JOIN
+							 (
+								SELECT
+									 COMPANY_CODE
+									,DIVISION_CODE
+									,ITEM_CODE
+									,MIN(PRIORITY) PRIORITY
+								FROM FMR_LINE_PRODUCT_PROCESS
+								GROUP BY COMPANY_CODE, DIVISION_CODE, ITEM_CODE
+							 ) LPP2
+							ON      LPP1.COMPANY_CODE  = inCOMCD
+							 	AND LPP1.DIVISION_CODE = inDIVCD
+							 	AND LPP1.ITEM_CODE     = FI.ITEM_CODE
+							 	AND LPP2.COMPANY_CODE  = inCOMCD
+								AND LPP2.DIVISION_CODE = inDIVCD
+								AND LPP2.ITEM_CODE     = FI.ITEM_CODE
+								AND LPP1.PRIORITY      = LPP2.PRIORITY
+						GROUP BY LPP1.COMPANY_CODE, LPP1.DIVISION_CODE, LPP1.ITEM_CODE
+					 ) LPP3
+					ON      LPP4.COMPANY_CODE       = inCOMCD
+					 	AND LPP4.DIVISION_CODE      = inDIVCD
+					 	AND LPP4.ITEM_CODE          = FI.ITEM_CODE
+						AND LPP4.LINE_RESOURCE_CODE = LPP3.LINE_RESOURCE_CODE
+				) LPP
+				INNER JOIN FMI_BOM FB
+				ON      FB.COMPANY_CODE    = inCOMCD
+					AND FB.DIVISION_CODE   = inDIVCD
+					AND FB.LOW_ITEM_CODE   = FI.ITEM_CODE
+					AND FB.PROCESS_PATTERN = LPP.PROCESS_PATTERN
+			)
+	WHERE FI.STD_BOM_PATTERN IS NULL OR FI.STD_BOM_PATTERN = ''
+	;
+
+	UPDATE FMI_ITEM FI
+	SET FI.STD_PROCESS_PATTERN = '*'
+	WHERE FI.STD_PROCESS_PATTERN IS NULL OR FI.STD_PROCESS_PATTERN = ''
+	;
+
+	UPDATE FMI_ITEM FI
+	SET FI.STD_BOM_PATTERN = '*'
+	WHERE FI.STD_BOM_PATTERN IS NULL OR FI.STD_BOM_PATTERN = ''
+	;
+	
+	COMMIT;
+
+	PrintLog(cSID || '品目号機マスタ取込 品目マスタ更新2 終了');
+
+EXCEPTION
+	WHEN OTHERS THEN
+		PrintLog(cSID || '品目号機マスタ取込 品目マスタ更新2 エラー終了');
+		RAISE;
+
+END;
+/
+
